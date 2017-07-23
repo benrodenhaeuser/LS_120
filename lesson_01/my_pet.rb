@@ -6,6 +6,7 @@ class MyPet
   end
 
   def speak
+    puts self
     "#{name} says: Hello!"
   end
 end
