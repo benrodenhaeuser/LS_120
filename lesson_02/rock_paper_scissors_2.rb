@@ -35,11 +35,10 @@ class Move
 end
 
 class Player
-  attr_accessor :move, :score
+  attr_accessor :move
 
   def initialize
     @move = nil
-    @score = 0
   end
 end
 
@@ -62,29 +61,38 @@ class Computer < Player
   end
 end
 
+class Score
+  attr_accessor :human, :computer
+  def initialize
+    @human = 0
+    @computer = 0
+  end
+
+  def reset
+    @human = 0
+    @computer = 0
+  end
+end
+
 class RPSGame
   ROUNDS_TO_WIN = 2
 
-  attr_accessor :human, :computer
+  attr_accessor :human, :computer, :score
 
   def initialize
     @human = Human.new
     @computer = Computer.new
+    @score = Score.new
   end
 
   def play
     display_welcome_message
     loop do
-      reset_scores
+      score.reset
       play_one_match
       break unless play_another_match?
     end
     display_goodbye_message
-  end
-
-  def reset_scores
-    computer.score = 0
-    human.score = 0
   end
 
   def play_one_match
@@ -93,6 +101,7 @@ class RPSGame
       computer.choose
       display_moves
       display_round_result
+      display_scores
       break display_overall_winner if overall_winner?
     end
   end
@@ -125,31 +134,33 @@ class RPSGame
   def display_round_result
     round_result =
       if human.move > computer.move
-        human.score += 1
+        score.human += 1
         "you won this round"
       elsif human.move < computer.move
-        computer.score += 1
+        score.computer += 1
         "the computer won this round"
       else
         "this round is a tie."
       end
     puts round_result
-    puts "current computer score: #{computer.score}"
-    puts "your current score: #{human.score}"
+  end
+
+  def display_scores
+    puts "current computer score: #{score.computer}"
+    puts "your current score: #{score.human}"
   end
 
   def display_overall_winner
-    if human.score >= ROUNDS_TO_WIN
+    if score.human >= ROUNDS_TO_WIN
       puts "human won overall game"
-    elsif computer.score >= ROUNDS_TO_WIN
+    elsif score.computer >= ROUNDS_TO_WIN
       puts "computer won overall game"
     end
   end
 
   def overall_winner?
-    human.score >= ROUNDS_TO_WIN || computer.score >= ROUNDS_TO_WIN
+    score.human >= ROUNDS_TO_WIN || score.computer >= ROUNDS_TO_WIN
   end
-
 end
 
 RPSGame.new.play
