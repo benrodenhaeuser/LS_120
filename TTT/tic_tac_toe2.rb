@@ -1,30 +1,40 @@
+module Customizable
+  AI = :smart # choose either :smart or :dumb
+  ROUNDS_TO_WIN = 2 # choose any integer
+end
+
 module Prompt
+  include Customizable
+
+  # todo: keyword argument for different types of prompts?
   INDENT = '    '
+  PROMPT_SIGN = '--> '
+
+  def clear
+    system 'clear'
+  end
 
   def prompt(message)
-    puts "--> #{message}"
+    puts PROMPT_SIGN + message
   end
 
-  def request_user_input
-    prompt("Please make your choice.")
-    print INDENT
-    gets.chomp.to_i
-  end
-
-  def wait_for_user
-    prompt("Press enter to begin the game.")
-    print INDENT
-    gets
+  def welcome
+    prompt("Welcome to Tic Tac Toe!")
+    prompt("Win #{ROUNDS_TO_WIN} rounds to win the match!")
   end
 
   def announce_invalid_input
     prompt("This is not a valid choice!")
   end
 
-  def announce_winner
-    case winner
-    when board.computer then prompt("The computer wins this round.")
-    when board.human then prompt("You win this round.")
+  def present_round_result
+    board.winner ? present_winner : announce_tie
+  end
+
+  def present_winner
+    case board.winner
+    when computer then prompt("The computer wins this round.")
+    when human    then prompt("You win this round.")
     end
   end
 
@@ -32,16 +42,51 @@ module Prompt
     prompt("This round is a tie.")
   end
 
-  def welcome_the_user
-    prompt("Welcome to Tic Tac Toe!")
+  # todo: fix singular/plural
+  def present_scores
+    print INDENT
+    puts "You have #{score_board[human]} points."
+    print INDENT
+    puts "Computer has #{score_board[computer]} points."
   end
 
-  def say_goodbye
+  def present_match_winner
+    case score_board.match_winner
+    when computer then prompt("GAME OVER ~~~ The computer wins the match.")
+    when human    then prompt("GAME OVER ~~~ You win the match.")
+    end
+  end
+
+  def goodbye
     prompt("Thanks for playing Tic Tac Toe! Goodbye!")
+  end
+
+  # todo: validation, list of available squares
+  def request_user_move
+    prompt("Please choose your square.")
+    print INDENT
+    gets.chomp.to_i
+  end
+
+  def wait
+    prompt("Press enter to continue.")
+    print INDENT
+    gets
+  end
+
+  # todo: validation
+  def user_wants_to_play_again?
+    prompt("Would you like to play again? (y/n)")
+    print INDENT
+    gets.chomp.start_with?('y')
   end
 end
 
-module Display
+# todo confusing naming: DisplayBoard, ScoreBoard, Board ???
+
+module DisplayBoard
+  include Prompt
+
   ROW_LENGTH = 3
   SQUARES = (1..ROW_LENGTH**2)
   HUMAN_MARKER = 'X'
@@ -51,104 +96,95 @@ module Display
   NEW_LINE = "\n"
   ROW_DELIMITER = NEW_LINE + "-----------" + NEW_LINE
 
-  def display_position
-    system 'clear'
+  def display
+    clear
     puts board_string
   end
 
-  def board_string
-    markers = SQUARES.map { |square| marker(square) }
+  private
 
+  def board_string
     rows = markers.each_slice(ROW_LENGTH).map do |row|
       BLANK + row.join(COL_DELIMITER) + BLANK
     end
-
     NEW_LINE + rows.join(ROW_DELIMITER) + NEW_LINE * 2
   end
 
+  def markers
+    SQUARES.map { |square| marker(square) }
+  end
+
   def marker(square)
-    case board.to_h[square]
-    when board.human then HUMAN_MARKER
-    when board.computer then COMPUTER_MARKER
+    case to_h[square]
+    when human    then HUMAN_MARKER
+    when computer then COMPUTER_MARKER
     else
       BLANK
     end
   end
 end
 
-class Player; end
-
-class Human < Player
-  include Prompt
-
-  def choose(board)
-    square = nil
-    loop do
-      square = request_user_input
-      break if board.available_squares.include?(square)
-      announce_invalid_input
+module Negamax
+  def negamax(player, top = false, memo = {})
+    unless memo[to_h]
+      if terminal?
+        memo[to_h] = payoff(player)
+      else
+        best_option = select_best(scored_options(player, memo))
+        top ? (return best_option.first) : memo[to_h] = best_option.last
+      end
     end
-    board << Move.new(square, self)
-  end
-end
-
-class Computer < Player
-  INTELLIGENCE = :dumb # configurable: :smart or :dumb
-
-  def choose(board)
-    INTELLIGENCE == :dumb ? choose_randomly(board) : choose_optimally(board)
+    memo[to_h]
   end
 
-  def choose_randomly(board)
-    board << Move.new(board.available_squares.sample, self)
-  end
+  private
 
-  def choose_optimally(board)
-    nil # todo
-  end
-
-  # this algorithm needs all sorts of information about the game.
-  # since, we have the board, we should mostly be covered.
-  # however, we also need the players, including the opponent_of method.
-  # making a move and unmaking a move is pushing and popping.
-  def nega_max(player, state, top = false)
-    if terminal?(state)
-      best_value = payoff(player, state)
+  def payoff(player)
+    if winner?(player)
+      1
+    elsif winner?(opponent_of(player))
+      -1
     else
-      best = available_moves(state).map do |move|
-        make(move, player, state)
-        value_for_move = -(nega_max(opponent(player), state))
-        unmake(move, state)
-        [move, value_for_move]
-      end.max_by { |move, value_for_move| value_for_move }
-      top ? (return best.first) : best_value = best.last
+      0
     end
-    best_value
   end
 
+  def scored_options(player, memo)
+    available_squares.map do |square|
+      moves << Move.new(square, player)
+      value_for_square = -negamax(opponent_of(player), false, memo)
+      moves.pop
+      [square, value_for_square]
+    end
+  end
+
+  def select_best(options)
+    options.max_by { |_, value_for_square| value_for_square }
+  end
 end
 
 class Board
+  include Negamax, DisplayBoard
+
   WIN_LINES = [
     [1, 2, 3], [4, 5, 6], [7, 8, 9], # rows
     [1, 4, 7], [2, 5, 8], [3, 6, 9], # cols
     [1, 5, 9], [3, 5, 7]             # diags
   ]
 
-  attr_reader :moves, :human, :computer
+  attr_reader :human, :computer
+  attr_accessor :moves, :winner, :active_player
 
-  def initialize
+  def initialize(human, computer)
     @moves = []
-    @human = Human.new
-    @computer = Computer.new
+    @human = human
+    @computer = computer
+    @active_player = human
+    @winner = nil
   end
 
   def available_squares
     (1..9).to_a.select { |square| empty?(square) }
-  end
-
-  def empty?(square)
-    to_h[square].nil?
   end
 
   def full?
@@ -167,8 +203,65 @@ class Board
     WIN_LINES.any? { |line| line.all? { |square| to_h[square] == player } }
   end
 
+  def terminal?
+    players.any? { |player| winner?(player) } || full?
+  end
+
+  def switch_active_player
+    self.active_player = opponent_of(active_player)
+  end
+
   def to_h
     @moves.map(&:to_a).to_h
+  end
+
+  def reset
+    initialize(human, computer)
+  end
+
+  private
+
+  def empty?(square)
+    to_h[square].nil?
+  end
+
+  def players
+    [human, computer]
+  end
+
+end
+
+class Player; end
+
+class Human < Player
+  include Prompt
+
+  def choose(board)
+    square = nil
+    loop do
+      square = request_user_move
+      break if board.available_squares.include?(square)
+      announce_invalid_input
+    end
+    board << Move.new(square, self)
+  end
+end
+
+class Computer < Player
+  include Customizable
+
+  def choose(board)
+    AI == :dumb ? choose_randomly(board) : choose_optimally(board)
+  end
+
+  private
+
+  def choose_randomly(board)
+    board << Move.new(board.available_squares.sample, self)
+  end
+
+  def choose_optimally(board)
+    board << Move.new(board.negamax(self, :top), self)
   end
 end
 
@@ -185,53 +278,81 @@ class Move
   end
 end
 
-class TTTGame
-  include Prompt, Display
+class ScoreBoard
+  include Customizable
 
-  attr_reader :board
-  attr_accessor :active_player, :winner
+  attr_accessor :match_winner, :scores
 
-  def initialize
-    @board = Board.new
-    @active_player = board.human
-    @winner = nil
+  def initialize(human, computer)
+    @scores = { human => 0, computer => 0 }
+    @match_winner = nil
   end
 
+  def [](player)
+    scores[player]
+  end
+
+  def []=(player, value)
+    scores[player] = value
+  end
+
+  def match_winner?(player)
+    scores[player] == ROUNDS_TO_WIN
+  end
+end
+
+class Game
+  include Customizable, Prompt
+
+  attr_reader :human, :computer, :board, :score_board
+
+  def initialize
+    @human = Human.new
+    @computer = Computer.new
+    @board = Board.new(human, computer)
+    @score_board = ScoreBoard.new(human, computer)
+  end
+
+  def start
+    clear
+    welcome
+    wait
+    play
+    goodbye
+  end
+
+  private
+
   def play
-    welcome_the_user
-    wait_for_user
-    display_position
-    # todo: play a certain number of rounds
-    play_round
-    say_goodbye
+    loop do
+      board.reset
+      board.display
+      play_round
+      break present_match_winner if score_board.match_winner
+      wait
+    end
+    initialize
+    play if user_wants_to_play_again?
   end
 
   def play_round
-    loop do
-      active_player.choose(board)
-      display_position
-      detect_winner
-      break announce_winner if winner
-      break announce_tie if board.full?
-      switch_active_player
+    until board.terminal?
+      board.active_player.choose(board)
+      board.display
+      evaluate_position
+      board.switch_active_player
     end
+    present_round_result
+    present_scores
   end
 
-  def detect_winner
-    self.winner = active_player if board.winner?(active_player)
+  def evaluate_position
+    return unless board.winner?(board.active_player)
+    winner = board.active_player
+    board.winner = winner
+    score_board[winner] += 1
+    score_board.match_winner = winner if score_board.match_winner?(winner)
   end
-
-  def switch_active_player
-    self.active_player = board.opponent_of(active_player)
-  end
-
 end
 
-TTTGame.new.play
-
-
-# making the players part of the board feels kind of weird.
-# another option would be to make the choices take place in the board class.
-# board.make_move(player)
-# however, the problem was that we need both players when we make choices.
-# that's not solved by doing that.
+Game.new.start
