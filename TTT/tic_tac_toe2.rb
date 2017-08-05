@@ -1,91 +1,16 @@
 module Customizable
-  AI = :smart # choose either :smart or :dumb
+  AI = :smart # choose :smart (optimal play) or :dumb (random play)
   ROUNDS_TO_WIN = 2 # choose any integer
 end
 
-module Prompt
-  include Customizable
-
-  # todo: keyword argument for different types of prompts?
-  INDENT = '    '
-  PROMPT_SIGN = '--> '
-
+module Utils
   def clear
     system 'clear'
   end
-
-  def prompt(message)
-    puts PROMPT_SIGN + message
-  end
-
-  def welcome
-    prompt("Welcome to Tic Tac Toe!")
-    prompt("Win #{ROUNDS_TO_WIN} rounds to win the match!")
-  end
-
-  def announce_invalid_input
-    prompt("This is not a valid choice!")
-  end
-
-  def present_round_result
-    board.winner ? present_winner : announce_tie
-  end
-
-  def present_winner
-    case board.winner
-    when computer then prompt("The computer wins this round.")
-    when human    then prompt("You win this round.")
-    end
-  end
-
-  def announce_tie
-    prompt("This round is a tie.")
-  end
-
-  # todo: fix singular/plural
-  def present_scores
-    print INDENT
-    puts "You have #{score_board[human]} points."
-    print INDENT
-    puts "Computer has #{score_board[computer]} points."
-  end
-
-  def present_match_winner
-    case score_board.match_winner
-    when computer then prompt("GAME OVER ~~~ The computer wins the match.")
-    when human    then prompt("GAME OVER ~~~ You win the match.")
-    end
-  end
-
-  def goodbye
-    prompt("Thanks for playing Tic Tac Toe! Goodbye!")
-  end
-
-  # todo: validation, list of available squares
-  def request_user_move
-    prompt("Please choose your square.")
-    print INDENT
-    gets.chomp.to_i
-  end
-
-  def wait
-    prompt("Press enter to continue.")
-    print INDENT
-    gets
-  end
-
-  # todo: validation
-  def user_wants_to_play_again?
-    prompt("Would you like to play again? (y/n)")
-    print INDENT
-    gets.chomp.start_with?('y')
-  end
 end
 
-# todo confusing naming: DisplayBoard, ScoreBoard, Board ???
-
-module DisplayBoard
-  include Prompt
+module DrawBoard
+  include Utils
 
   ROW_LENGTH = 3
   SQUARES = (1..ROW_LENGTH**2)
@@ -96,7 +21,7 @@ module DisplayBoard
   NEW_LINE = "\n"
   ROW_DELIMITER = NEW_LINE + "-----------" + NEW_LINE
 
-  def display
+  def draw
     clear
     puts board_string
   end
@@ -164,7 +89,7 @@ module Negamax
 end
 
 class Board
-  include Negamax, DisplayBoard
+  include Negamax, DrawBoard
 
   WIN_LINES = [
     [1, 2, 3], [4, 5, 6], [7, 8, 9], # rows
@@ -183,20 +108,24 @@ class Board
     @winner = nil
   end
 
-  def available_squares
-    (1..9).to_a.select { |square| empty?(square) }
-  end
-
-  def full?
-    available_squares.empty?
-  end
-
   def <<(move)
     moves << move
   end
 
+  def to_h
+    @moves.map(&:to_a).to_h
+  end
+
   def opponent_of(player)
     player == human ? computer : human
+  end
+
+  def available_squares
+    SQUARES.select { |square| empty?(square) }
+  end
+
+  def full?
+    available_squares.empty?
   end
 
   def winner?(player)
@@ -209,10 +138,6 @@ class Board
 
   def switch_active_player
     self.active_player = opponent_of(active_player)
-  end
-
-  def to_h
-    @moves.map(&:to_a).to_h
   end
 
   def reset
@@ -228,6 +153,98 @@ class Board
   def players
     [human, computer]
   end
+end
+
+module Prompt
+  include Customizable
+
+  # put into Utils starting here
+
+  # todo: keyword argument for different types of prompts?
+  INDENT = '    '
+  PROMPT_SIGN = '--> '
+
+  def prompt(message)
+    puts PROMPT_SIGN + message
+  end
+
+  # put into Utils ending here
+
+  # put into Game starting here
+
+  def welcome
+    prompt("Welcome to Tic Tac Toe!")
+    prompt("Win #{ROUNDS_TO_WIN} rounds to win the match!")
+  end
+
+  def announce_invalid_input
+    prompt("This is not a valid choice!")
+  end
+
+  def present_round_result
+    board.winner ? present_winner : announce_tie
+  end
+
+  def present_winner
+    case board.winner
+    when computer then prompt("The computer wins this round.")
+    when human    then prompt("You win this round.")
+    end
+  end
+
+  def announce_tie
+    prompt("This round is a tie.")
+  end
+
+  # todo: fix singular/plural
+  def present_scores
+    print INDENT
+    puts "You have #{score_board[human]} points."
+    print INDENT
+    puts "Computer has #{score_board[computer]} points."
+  end
+
+  def present_match_winner
+    case score_board.match_winner
+    when computer then prompt("GAME OVER ~~~ The computer wins the match.")
+    when human    then prompt("GAME OVER ~~~ You win the match.")
+    end
+  end
+
+  def goodbye
+    prompt("Thanks for playing Tic Tac Toe! Goodbye!")
+  end
+
+  # todo: next, we have three methods that request user input
+  # common logic: a prompt and a gets wrapped in validation
+
+  # todo: validation, list of available squares ("joinor")
+
+  # the next one is the only method used by the player class.
+  # all other methods here are used by the game class.
+
+  def wait
+    prompt("Press enter to continue.")
+    print INDENT
+    gets
+  end
+
+  # todo: validation
+  def user_wants_to_play_again?
+    prompt("Would you like to play again? (y/n)")
+    print INDENT
+    gets.chomp.start_with?('y')
+  end
+
+  # put into Game ending here
+
+  # put into Human starting here
+  def request_user_move
+    prompt("Please choose your square.")
+    print INDENT
+    gets.chomp.to_i
+  end
+  # put into Human ending here
 
 end
 
@@ -302,16 +319,9 @@ class ScoreBoard
 end
 
 class Game
-  include Customizable, Prompt
+  include Prompt, Utils
 
   attr_reader :human, :computer, :board, :score_board
-
-  def initialize
-    @human = Human.new
-    @computer = Computer.new
-    @board = Board.new(human, computer)
-    @score_board = ScoreBoard.new(human, computer)
-  end
 
   def start
     clear
@@ -324,21 +334,29 @@ class Game
   private
 
   def play
+    init
     loop do
       board.reset
-      board.display
+      board.draw
       play_round
-      break present_match_winner if score_board.match_winner
+      break if score_board.match_winner
       wait
     end
-    initialize
+    present_match_winner
     play if user_wants_to_play_again?
+  end
+
+  def init
+    @human = Human.new
+    @computer = Computer.new
+    @board = Board.new(human, computer)
+    @score_board = ScoreBoard.new(human, computer)
   end
 
   def play_round
     until board.terminal?
       board.active_player.choose(board)
-      board.display
+      board.draw
       evaluate_position
       board.switch_active_player
     end
