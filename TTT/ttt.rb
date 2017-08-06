@@ -54,7 +54,7 @@ module TTT
       prompt("- The #{args[:start_color]}-player kicks off each round.", INDENT)
       prompt("- The computer skill level is #{args[:skill_level]}.", INDENT)
       prompt("  (1: 'dumb', 2: 'smart', 3: 'very smart')", INDENT)
-      prompt("- Winning a round gives you one point. If you score", INDENT)
+      prompt("- Winning a round is worth one point. If you score", INDENT)
       prompt("  #{args[:rounds_to_win]} point(s), you win the match.", INDENT)
     end
 
