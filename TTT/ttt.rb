@@ -529,7 +529,6 @@ module TTT
         play_round
         break if score_keeper.match_winner
         reset_for_next_round
-        GetUserInput.press_enter
       end
       MessageToUser.present_match_winner(score_keeper.match_winner)
     end
@@ -573,6 +572,7 @@ module TTT
     def reset_for_next_round
       board.reset
       schedule.reset
+      GetUserInput.press_enter
     end
   end
 
