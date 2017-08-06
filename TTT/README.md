@@ -9,7 +9,7 @@
 - *Human:* choses moves according to user input.
 - *Computer:* chooses moves based on reasoning about board according to "AI skill level" (dumb/intermediate/optimal).
 - *Schedule:* determines who is to move.
-- *Score_keeper:* keep tracks of round wins and match wins.
+- *ScoreKeeper:* keep tracks of round wins and match wins.
 - *Match:* orchestrates the above-mentioned classes, managing the main game loop.
 - *Settings:* stores user-customizable aspects.
 - *Game:* kicks off match based on settings.
