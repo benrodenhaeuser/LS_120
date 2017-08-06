@@ -10,9 +10,9 @@
 - *Score_keeper:* keep tracks of round wins and match wins.
 - *Match:* orchestrates the above-mentioned classes, managing the main game loop.
 - *Settings:* stores user-customizable aspects.
-- *Game:* initiate match based on settings.
+- *Game:* kicks off match based on settings.
 
 ### Modules
 
 - *MessageToUser:* display text to user.
-- *GetUserInput:* obtain and validate user input.
+- *GetUserInput:* obtain validated user input.
