@@ -259,8 +259,6 @@ module TTT
 
     private
 
-    attr_reader :moves, :x_color, :o_color
-
     SIZE = 3
     SQUARES = (1..SIZE**2)
     CENTER_SQUARE = 5
@@ -269,6 +267,8 @@ module TTT
       [1, 4, 7], [2, 5, 8], [3, 6, 9], # cols
       [1, 5, 9], [3, 5, 7]             # diags
     ]
+
+    attr_reader :moves, :x_color, :o_color
 
     Move = Struct.new(:square, :color) do
       def to_a
@@ -478,10 +478,6 @@ module TTT
   end
 
   class Settings
-    X_COLOR = 'X'
-    O_COLOR = 'O'
-    COMPUTER_SKILLS = [1, 2, 3]
-
     attr_accessor :x_color, :o_color, :colors, :human_color, :computer_color,
                   :rounds_to_win, :skill_level, :start_color
 
@@ -493,10 +489,6 @@ module TTT
       @start_color = x_color
       @rounds_to_win  = 3
       @skill_level    = 2
-    end
-
-    def colors
-      [x_color, o_color]
     end
 
     def customize
@@ -518,6 +510,16 @@ module TTT
         skill_level: skill_level,
         rounds_to_win: rounds_to_win
       }
+    end
+
+    private
+
+    X_COLOR = 'X'
+    O_COLOR = 'O'
+    COMPUTER_SKILLS = [1, 2, 3]
+
+    def colors
+      [x_color, o_color]
     end
   end
 
