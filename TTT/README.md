@@ -4,7 +4,7 @@
 
 ### Classes
 
-- *Board:* records and displays TTT positions.
+- *Board:* records, evaluates and displays TTT positions.
 - *Player:* chooses moves on a TTT board. There are two subclasses of Player: *Human* and *Computer*.
 - *Human:* choses moves according to user input.
 - *Computer:* chooses moves based on reasoning about board according to "AI skill level" (dumb/intermediate/optimal).
