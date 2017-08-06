@@ -4,13 +4,13 @@
 
 ### Classes
 
-- *Board:* record, evaluate and display board positions.
-- *Player:* choose moves based on a player's color (and, in the case of a computer player, based on skill level)
-- *Schedule:* determine who is to move.
-- *Score_keeper:* keep track of round wins and match wins.
-- *Match:* manage the game loop for one multi-round match.
-- *Settings:* store user-customizable aspects of a match (and a few constants).
-- *Game:* initiate matches based on settings.
+- *Board:* records, evaluates and displays board positions.
+- *Player:* chooses moves on board based on a player's color (and, in the case of a computer player, based on skill level).
+- *Schedule:* determines who is to move.
+- *Score_keeper:* keep tracks of round wins and match wins.
+- *Match:* orchestrates the above-mentioned classes, managing the main game loop.
+- *Settings:* stores user-customizable aspects.
+- *Game:* initiate match based on settings.
 
 ### Modules
 

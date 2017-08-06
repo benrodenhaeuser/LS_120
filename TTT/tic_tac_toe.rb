@@ -280,6 +280,14 @@ module TTT
       WIN_LINES.any? { |line| line.all? { |square| to_h[square] == color } }
     end
 
+    def full?
+      available_squares.empty?
+    end
+
+    def other_color(color)
+      color == x_color ? o_color : x_color
+    end
+
     def to_h
       @moves.map(&:to_a).to_h
     end
@@ -300,10 +308,6 @@ module TTT
       to_h[square].nil?
     end
 
-    def full?
-      available_squares.empty?
-    end
-
     def reasonable_square(color)
       other_color = other_color(color)
       threats_for_color = threats_for(color)
@@ -321,10 +325,6 @@ module TTT
         end
 
       reasonable_squares.sample
-    end
-
-    def other_color(color)
-      color == x_color ? o_color : x_color
     end
 
     def threats_for(color)
