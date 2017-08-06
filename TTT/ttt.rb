@@ -214,6 +214,8 @@ module TTT
   class Board
     include DisplayConstants
 
+    attr_reader :moves
+
     def initialize(x_color, o_color)
       @moves = []
       @x_color = x_color
@@ -228,24 +230,20 @@ module TTT
       moves << Move.new(square, color)
     end
 
-    def add_random_move(color)
-      moves << Move.new(available_squares.sample, color)
-    end
-
-    def add_reasonably_smart_move(color)
-      moves << Move.new(reasonable_square(color), color)
-    end
-
-    def add_optimal_move(color)
-      moves << Move.new(nega_max(color, :top), color)
-    end
-
     def terminal?
       [x_color, o_color].any? { |color| winning_color?(color) } || full?
     end
 
+    def other_color(color)
+      color == x_color ? o_color : x_color
+    end
+
     def find_winning_color
       [x_color, o_color].find { |color| winning_color?(color) }
+    end
+
+    def winning_color?(color)
+      WIN_LINES.any? { |line| line.all? { |square| to_h[square] == color } }
     end
 
     def draw
@@ -257,18 +255,21 @@ module TTT
       initialize(x_color, o_color)
     end
 
+    def to_h
+      moves.map(&:to_a).to_h
+    end
+
     private
+
+    attr_reader :x_color, :o_color
 
     SIZE = 3
     SQUARES = (1..SIZE**2)
-    CENTER_SQUARE = 5
     WIN_LINES = [
       [1, 2, 3], [4, 5, 6], [7, 8, 9], # rows
       [1, 4, 7], [2, 5, 8], [3, 6, 9], # cols
       [1, 5, 9], [3, 5, 7]             # diags
     ]
-
-    attr_reader :moves, :x_color, :o_color
 
     Move = Struct.new(:square, :color) do
       def to_a
@@ -276,20 +277,8 @@ module TTT
       end
     end
 
-    def winning_color?(color)
-      WIN_LINES.any? { |line| line.all? { |square| to_h[square] == color } }
-    end
-
     def full?
       available_squares.empty?
-    end
-
-    def other_color(color)
-      color == x_color ? o_color : x_color
-    end
-
-    def to_h
-      @moves.map(&:to_a).to_h
     end
 
     def board_as_string
@@ -306,72 +295,6 @@ module TTT
 
     def not_yet_colored?(square)
       to_h[square].nil?
-    end
-
-    def reasonable_square(color)
-      other_color = other_color(color)
-      threats_for_color = threats_for(color)
-      threats_for_other_color = threats_for(other_color)
-
-      reasonable_squares =
-        if !threats_for_other_color.empty?
-          threats_for_other_color
-        elsif !threats_for_color.empty?
-          threats_for_color
-        elsif available_squares.include?(CENTER_SQUARE)
-          [CENTER_SQUARE]
-        else
-          available_squares
-        end
-
-      reasonable_squares.sample
-    end
-
-    def threats_for(color)
-      available_squares.select { |square| threat_for?(color, square) }
-    end
-
-    def threat_for?(color, square)
-      other_color = other_color(color)
-      moves << Move.new(square, other_color)
-      outcome = winning_color?(other_color)
-      moves.pop
-      outcome
-    end
-
-    def nega_max(color, top = false, memo = {})
-      unless memo[to_h]
-        if terminal?
-          memo[to_h] = payoff(color)
-        else
-          best = select_best(scored_options(color, memo))
-          top ? (return best.first) : memo[to_h] = best.last
-        end
-      end
-      memo[to_h]
-    end
-
-    def payoff(color)
-      if winning_color?(color)
-        1
-      elsif winning_color?(other_color(color))
-        -1
-      else
-        0
-      end
-    end
-
-    def scored_options(color, memo)
-      available_squares.map do |square|
-        moves << Move.new(square, color)
-        value_for_square = -nega_max(other_color(color), false, memo)
-        moves.pop
-        [square, value_for_square]
-      end
-    end
-
-    def select_best(options)
-      options.max_by { |_, value_for_square| value_for_square }
     end
   end
 
@@ -411,15 +334,83 @@ module TTT
 
     def choose_square
       case skill_level
-      when 1 then board.add_random_move(color)
-      when 2 then board.add_reasonably_smart_move(color)
-      when 3 then board.add_optimal_move(color)
+      when 1 then board.add_move(available_squares.sample, color)
+      when 2 then board.add_move(reasonable_square(color), color)
+      when 3 then board.add_move(nega_max(color, :top), color)
       end
     end
 
     private
 
+    CENTER_SQUARE = 5
+
     attr_reader :skill_level
+
+    def reasonable_square(color)
+      other_color = board.other_color(color)
+      threats_for_color = threats_for(color)
+      threats_for_other_color = threats_for(other_color)
+
+      reasonable_squares =
+        if !threats_for_other_color.empty?
+          threats_for_other_color
+        elsif !threats_for_color.empty?
+          threats_for_color
+        elsif board.available_squares.include?(CENTER_SQUARE)
+          [CENTER_SQUARE]
+        else
+          board.available_squares
+        end
+
+      reasonable_squares.sample
+    end
+
+    def threats_for(color)
+      board.available_squares.select { |square| threat_for?(color, square) }
+    end
+
+    def threat_for?(color, square)
+      other_color = board.other_color(color)
+      board.add_move(square, other_color)
+      outcome = board.winning_color?(other_color)
+      board.moves.pop
+      outcome
+    end
+
+    def nega_max(color, top = false, memo = {})
+      unless memo[board.to_h]
+        if board.terminal?
+          memo[board.to_h] = payoff(color)
+        else
+          best = select_best(scored_options(color, memo))
+          top ? (return best.first) : memo[board.to_h] = best.last
+        end
+      end
+      memo[board.to_h]
+    end
+
+    def payoff(color)
+      if board.winning_color?(color)
+        1
+      elsif board.winning_color?(board.other_color(color))
+        -1
+      else
+        0
+      end
+    end
+
+    def scored_options(color, memo)
+      board.available_squares.map do |square|
+        board.add_move(square, color)
+        value_for_square = -nega_max(board.other_color(color), false, memo)
+        board.moves.pop
+        [square, value_for_square]
+      end
+    end
+
+    def select_best(options)
+      options.max_by { |_, value_for_square| value_for_square }
+    end
   end
 
   class Schedule
