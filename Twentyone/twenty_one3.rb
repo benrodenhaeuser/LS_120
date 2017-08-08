@@ -14,7 +14,6 @@ module TwentyOne
     end
   end
 
-  # 20 LOCs
   class Card
     attr_accessor :name, :suit, :raw_value
 
@@ -35,7 +34,6 @@ module TwentyOne
     end
   end
 
-  # 30 LOCs
   class Deck
     attr_reader :stock
 
@@ -67,7 +65,6 @@ module TwentyOne
     end
   end
 
-  # 50 LOCs
   class Participant
     include Utils
 
@@ -114,14 +111,12 @@ module TwentyOne
     end
   end
 
-  # 10 LOCs
   class Player < Participant
     def to_s
       "Player"
     end
   end
 
-  # 20 LOCs
   class Dealer < Participant
     DEALER_STAY_VALUE = 17
 
@@ -142,7 +137,6 @@ module TwentyOne
     end
   end
 
-  # 40 LOCs
   class ScoreKeeper
     attr_reader :round_winner, :match_winner
 
@@ -182,63 +176,42 @@ module TwentyOne
     end
   end
 
-  # 140 LOCs
-  class Game
+  class Round
     include Utils
 
-    ROUNDS_TO_WIN = 2
+    attr_accessor :player, :dealer, :deck, :winner
 
-    attr_accessor :deck, :player, :dealer, :score_keeper
-
-    def initialize
+    def initialize(player, dealer)
+      @player = player
+      @dealer = dealer
       @deck = Deck.new
-      @player = Player.new
-      @dealer = Dealer.new
-      @score_keeper = ScoreKeeper.new(ROUNDS_TO_WIN)
+      @winner = nil
     end
 
-    def start
-      welcome
-      play
-      good_bye
-    end
-
-    # class Match (?)
-    def play # unfolding sequence of matches — needs score_board
-      reset_for_current_match
-      play_match
-      present_match_winner
-      return unless play_some_more?
-      play
-    end
-
-    # class Round (?)
-    def play_match # unfolding sequence of rounds — needs deck/player/dealer
-      reset_for_current_round
+    def play
       deal_two_cards_each
+      show_hands
       player_takes_turn
       dealer_takes_turn
+      show_hands(:full)
       evaluate_round
-      present_results
-      return if score_keeper.match_winner
-      please_press_enter
-      play_match
-    end
-
-    def play_some_more?
-      answer = nil
-      loop do
-        puts "Would you like to play some more? (y/n)"
-        answer = gets.chomp.downcase
-        break if answer.start_with?('y', 'n')
-        announce_invalid_input
-      end
-      answer.start_with?('y')
     end
 
     def deal_two_cards_each
       [player, dealer].each { |guy| 2.times { deck.deal_a_card(guy) } }
-      show_hands
+    end
+
+    def show_hands(full = false)
+      clear_terminal
+      puts ""
+      puts "Player:"
+      puts player.display
+      puts ""
+      puts "Dealer:"
+      puts (full ? dealer.display : dealer.display_first)
+      puts ""
+      puts "Player's total is #{player.value}."
+      puts (full ? "Dealer has #{dealer.value}." : "Dealer's first is worth #{dealer.value_of_first}." )
     end
 
     def player_takes_turn
@@ -260,7 +233,7 @@ module TwentyOne
 
     def evaluate_round
       return if player.value == dealer.value
-      round_winner =
+      @winner =
         if player.busted?
           dealer
         elsif dealer.busted?
@@ -268,59 +241,109 @@ module TwentyOne
         else
           [player, dealer].max_by { |guy| guy.value }
         end
-      score_keeper.update_with_winner(round_winner)
+    end
+  end
+
+  class Match
+    include Utils
+
+    ROUNDS_TO_WIN = 2
+
+    attr_accessor :score_keeper, :player, :dealer, :round
+
+    def initialize
+      @score_keeper = ScoreKeeper.new(ROUNDS_TO_WIN)
+      @player = Player.new
+      @dealer = Dealer.new
+      @round = nil
+      # @winner # could make sense!
     end
 
-    def present_results
-      show_hands(:full)
-      present_winner
+    def play
+      play_round
+      keep_score
+      present_round_results
+      reset_players
+      please_press_enter
+      play unless score_keeper.match_winner
     end
 
-    def show_hands(full = false)
-      clear_terminal
-      puts ""
-      puts "Player (#{score_keeper[player]} of #{ROUNDS_TO_WIN}):"
-      puts player.display
-      puts ""
-      puts "Dealer (#{score_keeper[dealer]} of #{ROUNDS_TO_WIN}):"
-      puts (full ? dealer.display : dealer.display_first)
-      puts ""
-      puts "Player's total is #{player.value}."
-      puts (full ? "Dealer has #{dealer.value}." : "Dealer's first is worth #{dealer.value_of_first}." )
+    def play_round
+      self.round = Round.new(player, dealer)
+      round.play
     end
 
-    def present_winner
+    def keep_score
+       score_keeper.update_with_winner(round.winner)
+    end
+
+    def reset_players
+      [player, dealer].each { |guy| guy.reset }
+    end
+
+    def present_round_results
       if score_keeper.round_winner
         puts "#{score_keeper.round_winner} wins!"
       else
         puts "It's a tie."
       end
     end
+  end
 
-    def reset_for_current_round
-      deck.reset
-      player.reset
-      dealer.reset
-      score_keeper.round_reset
+  class Game
+    include Utils
+
+    attr_accessor :match
+
+    def initialize
+      @match = nil
     end
 
-    def reset_for_current_match
-      score_keeper.reset
+    def start
+      intro
+      play
+      outro
     end
 
-    def welcome
+    def intro
       puts "Welcome to Twentyone!"
       please_press_enter
     end
 
-    def good_bye
-      puts "Goodbye!"
+    def play
+      play_match
+      play if play_some_more?
     end
 
-    def present_match_winner
-      puts "The match winner is #{score_keeper.match_winner}!"
+    def play_match
+      self.match = Match.new
+      match.play
+    end
+
+    def play_some_more?
+      answer = nil
+      loop do
+        puts "Would you like to play some more? (y/n)"
+        answer = gets.chomp.downcase
+        break if answer.start_with?('y', 'n')
+        announce_invalid_input
+      end
+      answer.start_with?('y')
+    end
+
+    def outro
+      puts "Goodbye!"
     end
   end
 end
 
 TwentyOne::Game.new.start
+
+
+
+# todo: interface
+
+# - we do not show the scores anywhere!
+# - improve the flow...
+# - we never say anything about whether anyone busted.
+# - hint at the fact that one card is hidden.
