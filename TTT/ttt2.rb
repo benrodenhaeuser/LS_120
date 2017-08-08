@@ -39,7 +39,7 @@ module TTT
     end
 
     def indent(string)
-      string.split("\n").map { |line| INDENT + line }.join("\n") << "\n"
+      string.split("\n").map { |line| INDENT + line }.join("\n")
     end
   end
 
@@ -76,7 +76,7 @@ module TTT
 
     def draw
       clear_terminal
-      puts "\n" + indent(board_as_string) + "\n"
+      puts "\n" + indent(board_as_string) + "\n\n"
     end
 
     def reset
