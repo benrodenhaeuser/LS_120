@@ -12,18 +12,6 @@ module TwentyOne
       puts "Press enter to continue."
       gets
     end
-
-    def column(matrix, col_index)
-      (0...matrix.size).inject([]) do |column, row_index|
-        column << matrix[row_index][col_index]
-      end
-    end
-
-    def transpose(matrix)
-      (0...matrix.first.size).inject([]) do |new_matrix, col_index|
-        new_matrix << column(matrix, col_index)
-      end
-    end
   end
 
   class Card
