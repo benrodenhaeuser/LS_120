@@ -577,7 +577,7 @@ module TTT
 
     def present_match_winner
       MessageToUser.present_match_winner(score_keeper.match_winner)
-    end 
+    end
   end
 
   class Game
