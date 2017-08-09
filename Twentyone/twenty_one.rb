@@ -28,6 +28,7 @@ module TwentyOne
       ]
     NUMBERS = (2..10)
     FACES = ['J', 'Q', 'K']
+    ACE = 'A'
 
     def initialize
       @stock = initial_card_stock.shuffle
@@ -38,7 +39,7 @@ module TwentyOne
       SUITS.each do |suit|
         NUMBERS.each { |value| cards << Card.new(value.to_s, suit, value) }
         FACES.each { |face| cards << Card.new(face, suit, 10) }
-        cards << Card.new('A', suit, 11)
+        cards << Card.new(ACE, suit, 11)
       end
       cards
     end
