@@ -10,7 +10,7 @@ module TwentyOne
 
     def to_s
       wrapper  = ("+" + ("-" * 7) + "+")
-      filler    = "|" + (" " * 7) + "|"
+      filler   = "|" + (" " * 7) + "|"
       suit_str = "|" + suit.center(7) + "|"
       name_str = "|" + name.center(7) + "|"
 
