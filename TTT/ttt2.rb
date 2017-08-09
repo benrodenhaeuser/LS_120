@@ -7,8 +7,12 @@ module TTT
     INDENT_DEPTH  = 4
     INDENT        = (BLANK * INDENT_DEPTH)
 
-    def prompt(message, sign = ARROW, cmd = :puts)
-      send(cmd, sign + message)
+    def prompt(message, sign = ARROW)
+      puts sign + message
+    end
+
+    def print_prompt(message, sign = ARROW)
+      print sign + message
     end
 
     def announce_invalid_input
@@ -17,12 +21,12 @@ module TTT
 
     def please_press_enter
       prompt("Press enter to continue.")
-      prompt(EMPTY_MESSAGE, INDENT, :print)
+      print_prompt(EMPTY_MESSAGE, INDENT)
       gets
     end
 
     def display_empty_user_prompt
-      prompt(EMPTY_MESSAGE, USER_ARROW, :print)
+      print_prompt(EMPTY_MESSAGE, USER_ARROW)
     end
 
     def clear_terminal
@@ -158,15 +162,13 @@ module TTT
     end
 
     def threats_for(color)
-      available_squares.select { |square| threat_for?(color, square) }
-    end
-
-    def threat_for?(color, square)
-      other_color = other_color(color)
-      add_move(square, other_color)
-      outcome = winning_color?(other_color)
-      moves.pop
-      outcome
+      available_squares.select do |square|
+        other_color = other_color(color)
+        add_move(square, other_color)
+        outcome = winning_color?(other_color)
+        moves.pop
+        outcome
+      end
     end
 
     def nega_max(color, top = false, memo = {})
@@ -175,11 +177,12 @@ module TTT
           memo[to_h] = payoff(color)
         else
           best = select_best(scored_options(color, memo))
-          top ? (return best.first) : memo[to_h] = best.last
+          return best.first if top
+          memo[to_h] = best.last
         end
       end
       memo[to_h]
-    end
+    endr
 
     def payoff(color)
       if winning_color?(color)
