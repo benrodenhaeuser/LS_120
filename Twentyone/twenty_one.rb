@@ -78,7 +78,7 @@ module TwentyOne
     end
 
     def number_of_aces
-      select { |card| card.name == 'Ace' }.count
+      select { |card| card.name == 'A' }.count
     end
 
     def value_of_first_card
