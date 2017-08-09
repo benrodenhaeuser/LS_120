@@ -1,19 +1,4 @@
 module TwentyOne
-  module GameConstants
-    SUITS =
-      [
-        "\u2660".encode('utf-8'), # spades
-        "\u2663".encode('utf-8'), # clubs
-        "\u2665".encode('utf-8'), # hears
-        "\u2666".encode('utf-8')  # diamonds
-      ]
-    NUMBERS = (2..10)
-    FACES = ['Jack', 'Queen', 'King']
-    BUST_VALUE = 22
-    DEALER_STAY_VALUE = 17
-    ROUNDS_TO_WIN = 2
-  end
-
   class Card
     attr_reader :name, :suit, :raw_value
 
@@ -24,7 +9,7 @@ module TwentyOne
     end
 
     def to_s
-      wrapper  = ("-" * 9)
+      wrapper  = ("+" + ("-" * 7) + "+")
       empty    = "|" + (" " * 7) + "|"
       suit_str = "|" + suit.center(7) + "|"
       name_str = "|" + name.center(7) + "|"
@@ -34,9 +19,15 @@ module TwentyOne
   end
 
   class Deck
-    include GameConstants
-
-    attr_reader :stock
+    SUITS =
+      [
+        "\u2660".encode('utf-8'), # spades
+        "\u2663".encode('utf-8'), # clubs
+        "\u2665".encode('utf-8'), # hearts
+        "\u2666".encode('utf-8')  # diamonds
+      ]
+    NUMBERS = (2..10)
+    FACES = ['J', 'Q', 'K']
 
     def initialize
       @stock = initial_card_stock.shuffle
@@ -47,24 +38,26 @@ module TwentyOne
       SUITS.each do |suit|
         NUMBERS.each { |value| cards << Card.new(value.to_s, suit, value) }
         FACES.each { |face| cards << Card.new(face, suit, 10) }
-        cards << Card.new('Ace', suit, 11)
+        cards << Card.new('A', suit, 11)
       end
       cards
     end
 
-    def deal_a_card(guy)
-      guy << stock.pop
+    def deal_a_card(participant)
+      participant << stock.pop
     end
 
     def reset
       initialize
     end
+
+    private
+
+    attr_reader :stock
   end
 
   class Hand
-    include Enumerable, GameConstants
-
-    attr_accessor :cards
+    include Enumerable
 
     def initialize
       @cards = []
@@ -80,7 +73,7 @@ module TwentyOne
 
     def value
       value = map(&:raw_value).inject(&:+)
-      number_of_aces.times { value -= 10 if value >= BUST_VALUE }
+      number_of_aces.times { value -= 10 if value >= Participant::BUST_VALUE }
       value
     end
 
@@ -105,10 +98,14 @@ module TwentyOne
         .map { |line| line.join(' ') }
         .join("\n")
     end
+
+    private
+
+    attr_reader :cards
   end
 
-  class Guy
-    include GameConstants
+  class Participant
+    BUST_VALUE = 22
 
     attr_accessor :hand
 
@@ -133,14 +130,14 @@ module TwentyOne
     end
   end
 
-  class Player < Guy
+  class Player < Participant
     def to_s
       "Player"
     end
   end
 
-  class Dealer < Guy
-    include GameConstants
+  class Dealer < Participant
+    DEALER_STAY_VALUE = 17
 
     def stay?
       hand.value >= DEALER_STAY_VALUE
@@ -165,37 +162,38 @@ module TwentyOne
       [hand_string(player), hand_string(dealer)].join("\n\n")
     end
 
-    def hand_string(guy)
-      name_arr = guy.to_s.upcase.split("")
-      hand_arr = hand_arr(guy)
-      hand_value_to_show = hand_value_to_show(guy)
-      total_string = total_string(guy)
+    def hand_string(participant)
+      name_arr = participant.to_s.upcase.split("")
+      hand_arr = hand_arr(participant)
 
+      hand_value_to_show = hand_value_to_show(participant)
+      total_string = total_string(participant)
       value_arr = ["", "", total_string, hand_value_to_show, "", ""]
+
       arrs = [name_arr, hand_arr, value_arr]
       arrs.transpose.map { |line| line.join(" " * 5) }.join("\n")
     end
 
-    def hand_arr(guy)
-      if guy == dealer && !finished
-        guy.hand.partially_hidden.to_s.split("\n")
+    def hand_arr(participant)
+      if participant == dealer && !finished
+        participant.hand.partially_hidden.to_s.split("\n")
       else
-        guy.hand.to_s.split("\n")
+        participant.hand.to_s.split("\n")
       end
     end
 
-    def hand_value_to_show(guy)
-      if guy == dealer && !finished
+    def hand_value_to_show(participant)
+      if participant == dealer && !finished
         ""
-      elsif guy.busted?
-        "#{guy.hand.value} (BUSTED!!)"
+      elsif participant.busted?
+        "#{participant.hand.value} (BUSTED!!)"
       else
-        guy.hand.value.to_s
+        participant.hand.value.to_s
       end
     end
 
-    def total_string(guy)
-      if guy == dealer && !finished
+    def total_string(participant)
+      if participant == dealer && !finished
         ""
       else
         "total:"
@@ -206,12 +204,21 @@ module TwentyOne
   module Prompt
     private
 
+    def prompt(message)
+      puts((" " * 4) + "> " + message)
+    end
+
+    def print_indent
+      print " " * 6
+    end
+
     def announce_invalid_input
-      puts "Sorry, this is not a valid input."
+      prompt "Sorry, this is not a valid input."
     end
 
     def request_to_press_enter
-      puts "Press enter to continue."
+      prompt "Press enter to continue."
+      print_indent
       gets
     end
   end
@@ -245,7 +252,9 @@ module TwentyOne
     attr_reader   :player, :dealer, :deck
 
     def deal_two_cards_each
-      [player, dealer].each { |guy| 2.times { deck.deal_a_card(guy) } }
+      [player, dealer].each do |participant|
+        2.times { deck.deal_a_card(participant) }
+      end
     end
 
     def player_turn
@@ -258,7 +267,8 @@ module TwentyOne
     end
 
     def request_decision
-      puts "Would you like to (h)it or (s)tay?"
+      prompt "Would you like to (h)it or (s)tay?"
+      print_indent
       answer = gets.chomp.downcase
       return answer if answer.start_with?('h', 's')
       announce_invalid_input
@@ -268,10 +278,10 @@ module TwentyOne
     def dealer_turn
       return if player.busted?
       dealer.hit(deck) until dealer.stay?
+      self.finished = true
     end
 
     def evaluate_hands
-      self.finished = true
       return if player.hand.value == dealer.hand.value
       self.winner = calculate_winner
     end
@@ -282,23 +292,23 @@ module TwentyOne
       elsif dealer.busted?
         player
       else
-        [player, dealer].max_by { |guy| guy.hand.value }
+        [player, dealer].max_by { |participant| participant.hand.value }
       end
     end
 
     def show_winner
       if winner
-        puts "#{winner} wins this round!"
+        prompt "#{winner} wins this round!"
       else
-        puts "It's a tie."
+        prompt "It's a tie."
       end
     end
   end
 
   class Match
-    include GameConstants, Prompt
+    ROUNDS_TO_WIN = 2
 
-    attr_accessor :winner
+    include Prompt
 
     def initialize
       @player = Player.new
@@ -320,7 +330,7 @@ module TwentyOne
 
     protected
 
-    attr_accessor :round
+    attr_accessor :round, :winner
 
     private
 
@@ -341,8 +351,8 @@ module TwentyOne
     end
 
     def present_scores
-      puts "#{player} #{scores[player]} : #{scores[dealer]} #{dealer}"
-      puts "#{winner} wins the match!" if winner
+      prompt "#{player} #{scores[player]} : #{scores[dealer]} #{dealer}"
+      prompt "#{winner} wins the match!" if winner
     end
   end
 
@@ -378,7 +388,8 @@ module TwentyOne
     def play_some_more?
       answer = nil
       loop do
-        puts "Would you like to play some more? (y/n)"
+        prompt "Would you like to play some more? (y/n)"
+        print_indent
         answer = gets.chomp.downcase
         break if answer.start_with?('y', 'n')
         announce_invalid_input
@@ -387,12 +398,15 @@ module TwentyOne
     end
 
     def intro
-      puts "Welcome to Twentyone!"
+      system 'clear'
+      puts ""
+      prompt "Welcome to Twentyone!"
+      prompt "It takes #{Match::ROUNDS_TO_WIN} round wins to win the match."
       request_to_press_enter
     end
 
     def outro
-      puts "Goodbye!"
+      prompt "Goodbye!"
     end
   end
 end
