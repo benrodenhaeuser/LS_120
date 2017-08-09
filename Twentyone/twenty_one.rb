@@ -79,7 +79,7 @@ module TwentyOne
     end
 
     def number_of_aces
-      select { |card| card.name == ACE }.count
+      select { |card| card.name == Deck::ACE }.count
     end
 
     def value_of_first_card
@@ -307,7 +307,7 @@ module TwentyOne
   end
 
   class Match
-    ROUNDS_TO_WIN = 2
+    ROUNDS_TO_WIN = 3
 
     include Prompt
 
