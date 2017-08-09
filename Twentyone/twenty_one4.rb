@@ -1,0 +1,400 @@
+module TwentyOne
+  module GameConstants
+    SUITS =
+      [
+        "\u2660".encode('utf-8'), # spades
+        "\u2663".encode('utf-8'), # clubs
+        "\u2665".encode('utf-8'), # hears
+        "\u2666".encode('utf-8')  # diamonds
+      ]
+    NUMBERS = (2..10)
+    FACES = ['Jack', 'Queen', 'King']
+    BUST_VALUE = 22
+    DEALER_STAY_VALUE = 17
+    ROUNDS_TO_WIN = 2
+  end
+
+  class Card
+    attr_reader :name, :suit, :raw_value
+
+    def initialize(name, suit, raw_value)
+      @name = name
+      @raw_value = raw_value
+      @suit = suit
+    end
+
+    def to_s
+      wrapper  = ("-" * 9)
+      empty    = "|" + (" " * 7) + "|"
+      suit_str = "|" + suit.center(7) + "|"
+      name_str = "|" + name.center(7) + "|"
+
+      [wrapper, empty, suit_str, name_str, empty, wrapper].join("\n")
+    end
+  end
+
+  class Deck
+    include GameConstants
+
+    attr_reader :stock
+
+    def initialize
+      @stock = initial_card_stock.shuffle
+    end
+
+    def initial_card_stock
+      cards = []
+      SUITS.each do |suit|
+        NUMBERS.each { |value| cards << Card.new(value.to_s, suit, value) }
+        FACES.each { |face| cards << Card.new(face, suit, 10) }
+        cards << Card.new('Ace', suit, 11)
+      end
+      cards
+    end
+
+    def deal_a_card(guy)
+      guy << stock.pop
+    end
+
+    def reset
+      initialize
+    end
+  end
+
+  class Hand
+    include Enumerable, GameConstants
+
+    attr_accessor :cards
+
+    def initialize
+      @cards = []
+    end
+
+    def each(&block)
+      cards.each(&block)
+    end
+
+    def <<(card)
+      cards << card
+    end
+
+    def value
+      value = map(&:raw_value).inject(&:+)
+      number_of_aces.times { value -= 10 if value >= BUST_VALUE }
+      value
+    end
+
+    def number_of_aces
+      select { |card| card.name == 'Ace' }.count
+    end
+
+    def value_of_first_card
+      cards.first.raw_value
+    end
+
+    def partially_hidden
+      partial_hand = Hand.new
+      face_down_card = Card.new('?', '?', nil)
+      partial_hand << cards.first << face_down_card
+      partial_hand
+    end
+
+    def to_s
+      map { |card| card.to_s.split("\n") }
+        .transpose
+        .map { |line| line.join(' ') }
+        .join("\n")
+    end
+  end
+
+  class Guy
+    include GameConstants
+
+    attr_accessor :hand
+
+    def initialize
+      @hand = Hand.new
+    end
+
+    def <<(card)
+      hand << card
+    end
+
+    def hit(deck)
+      deck.deal_a_card(self)
+    end
+
+    def busted?
+      hand.value >= BUST_VALUE
+    end
+
+    def reset
+      initialize
+    end
+  end
+
+  class Player < Guy
+    def to_s
+      "Player"
+    end
+  end
+
+  class Dealer < Guy
+    include GameConstants
+
+    def stay?
+      hand.value >= DEALER_STAY_VALUE
+    end
+
+    def to_s
+      "Dealer"
+    end
+  end
+
+  module ShowHands
+    private
+
+    def show_hands
+      system 'clear'
+      puts ""
+      puts hands_string
+      puts ""
+    end
+
+    def hands_string
+      [hand_string(player), hand_string(dealer)].join("\n\n")
+    end
+
+    def hand_string(guy)
+      name_arr = guy.to_s.upcase.split("")
+      hand_arr = hand_arr(guy)
+      hand_value_to_show = hand_value_to_show(guy)
+      total_string = total_string(guy)
+
+      value_arr = ["", "", total_string, hand_value_to_show, "", ""]
+      arrs = [name_arr, hand_arr, value_arr]
+      arrs.transpose.map { |line| line.join(" " * 5) }.join("\n")
+    end
+
+    def hand_arr(guy)
+      if guy == dealer && !finished
+        guy.hand.partially_hidden.to_s.split("\n")
+      else
+        guy.hand.to_s.split("\n")
+      end
+    end
+
+    def hand_value_to_show(guy)
+      if guy == dealer && !finished
+        ""
+      elsif guy.busted?
+        "#{guy.hand.value} (BUSTED!!)"
+      else
+        guy.hand.value.to_s
+      end
+    end
+
+    def total_string(guy)
+      if guy == dealer && !finished
+        ""
+      else
+        "total:"
+      end
+    end
+  end
+
+  module Prompt
+    private
+
+    def announce_invalid_input
+      puts "Sorry, this is not a valid input."
+    end
+
+    def request_to_press_enter
+      puts "Press enter to continue."
+      gets
+    end
+  end
+
+  class Round
+    include ShowHands, Prompt
+
+    attr_reader :winner
+
+    def initialize(player, dealer)
+      @player = player
+      @dealer = dealer
+      @deck = Deck.new
+      @finished = false
+      @winner = nil
+    end
+
+    def play
+      deal_two_cards_each
+      player_turn
+      dealer_turn
+      evaluate_hands
+      show_hands
+      show_winner
+    end
+
+    private
+
+    attr_accessor :finished
+    attr_writer   :winner
+    attr_reader   :player, :dealer, :deck
+
+    def deal_two_cards_each
+      [player, dealer].each { |guy| 2.times { deck.deal_a_card(guy) } }
+    end
+
+    def player_turn
+      show_hands
+      return if player.busted?
+      answer = request_decision
+      return if answer.start_with?('s')
+      player.hit(deck)
+      player_turn
+    end
+
+    def request_decision
+      puts "Would you like to (h)it or (s)tay?"
+      answer = gets.chomp.downcase
+      return answer if answer.start_with?('h', 's')
+      announce_invalid_input
+      request_decision
+    end
+
+    def dealer_turn
+      return if player.busted?
+      dealer.hit(deck) until dealer.stay?
+    end
+
+    def evaluate_hands
+      self.finished = true
+      return if player.hand.value == dealer.hand.value
+      self.winner = calculate_winner
+    end
+
+    def calculate_winner
+      if player.busted?
+        dealer
+      elsif dealer.busted?
+        player
+      else
+        [player, dealer].max_by { |guy| guy.hand.value }
+      end
+    end
+
+    def show_winner
+      if winner
+        puts "#{winner} wins this round!"
+      else
+        puts "It's a tie."
+      end
+    end
+  end
+
+  class Match
+    include GameConstants, Prompt
+
+    attr_accessor :winner
+
+    def initialize
+      @player = Player.new
+      @dealer = Dealer.new
+      @round = nil
+      @winner = nil
+      @scores = Hash.new { |hash, key| hash[key] = 0 }
+    end
+
+    def play
+      reset_players
+      play_round
+      keep_score
+      present_scores
+      return if winner
+      request_to_press_enter
+      play
+    end
+
+    protected
+
+    attr_accessor :round
+
+    private
+
+    attr_reader :player, :dealer, :scores
+
+    def play_round
+      self.round = Round.new(player, dealer)
+      round.play
+    end
+
+    def keep_score
+      scores[round.winner] += 1
+      self.winner = round.winner if scores[round.winner] == ROUNDS_TO_WIN
+    end
+
+    def reset_players
+      [player, dealer].each(&:reset)
+    end
+
+    def present_scores
+      puts "#{player} #{scores[player]} : #{scores[dealer]} #{dealer}"
+      puts "#{winner} wins the match!" if winner
+    end
+  end
+
+  class Session
+    include Prompt
+
+    def initialize
+      @match = nil
+    end
+
+    def start
+      intro
+      play
+      outro
+    end
+
+    protected
+
+    attr_accessor :match
+
+    private
+
+    def play
+      play_match
+      play if play_some_more?
+    end
+
+    def play_match
+      self.match = Match.new
+      match.play
+    end
+
+    def play_some_more?
+      answer = nil
+      loop do
+        puts "Would you like to play some more? (y/n)"
+        answer = gets.chomp.downcase
+        break if answer.start_with?('y', 'n')
+        announce_invalid_input
+      end
+      answer.start_with?('y')
+    end
+
+    def intro
+      puts "Welcome to Twentyone!"
+      request_to_press_enter
+    end
+
+    def outro
+      puts "Goodbye!"
+    end
+  end
+end
+
+TwentyOne::Session.new.start
