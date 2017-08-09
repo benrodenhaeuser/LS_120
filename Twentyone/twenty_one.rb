@@ -10,11 +10,11 @@ module TwentyOne
 
     def to_s
       wrapper  = ("+" + ("-" * 7) + "+")
-      empty    = "|" + (" " * 7) + "|"
+      filler    = "|" + (" " * 7) + "|"
       suit_str = "|" + suit.center(7) + "|"
       name_str = "|" + name.center(7) + "|"
 
-      [wrapper, empty, suit_str, name_str, empty, wrapper].join("\n")
+      [wrapper, filler, suit_str, name_str, filler, wrapper].join("\n")
     end
   end
 
