@@ -182,7 +182,7 @@ module TTT
         end
       end
       memo[to_h]
-    endr
+    end
 
     def payoff(color)
       if winning_color?(color)
