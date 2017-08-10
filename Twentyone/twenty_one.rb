@@ -160,7 +160,7 @@ module TwentyOne
     end
 
     def hands_string(participants)
-      participants.map { |participant | hand_string(participant) }.join("\n\n")
+      participants.map { |participant| hand_string(participant) }.join("\n\n")
     end
 
     def hand_string(participant)
@@ -175,7 +175,7 @@ module TwentyOne
     end
 
     def hand(participant)
-      if participant.kind_of?(Dealer) && !finished
+      if participant.is_a?(Dealer) && !finished
         participant.hand.partially_hidden
       else
         participant.hand
@@ -183,7 +183,7 @@ module TwentyOne
     end
 
     def hand_value_to_show(participant)
-      if participant.kind_of?(Dealer) && !finished
+      if participant.is_a?(Dealer) && !finished
         ["", ""]
       elsif participant.busted?
         ["total:", "#{participant.hand.value} (BUSTED!!)"]
