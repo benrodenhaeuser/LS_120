@@ -277,7 +277,6 @@ module TwentyOne
     end
 
     def dealer_turn
-      return if player.busted?
       dealer.hit(deck) until dealer.stay?
       self.finished = true
     end
