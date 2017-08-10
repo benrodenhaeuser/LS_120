@@ -217,7 +217,7 @@ module TwentyOne
     def request_to_continue_or_exit
       prompt "Press enter to continue (or (e) to exit)."
       print_indent
-      decision = gets.chomp.to_s
+      decision = gets.chomp.to_s.downcase
       return decision if ['', 'e'].include?(decision)
       announce_invalid_input
       request_to_continue_or_exit
