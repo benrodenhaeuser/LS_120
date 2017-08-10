@@ -408,7 +408,7 @@ module TwentyOne
       puts ""
       prompt "Welcome to Twentyone!"
       prompt "It takes #{Match::ROUNDS_TO_WIN} round wins to win the match."
-      request_to_press_enter # no exit point
+      request_to_press_enter
     end
 
     def outro
