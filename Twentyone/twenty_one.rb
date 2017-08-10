@@ -152,15 +152,15 @@ module TwentyOne
   module ShowHands
     private
 
-    def show_hands
+    def show_hands(participants)
       system 'clear'
       puts ""
-      puts hands_string
+      puts hands_string(participants)
       puts ""
     end
 
-    def hands_string
-      [hand_string(player), hand_string(dealer)].join("\n\n")
+    def hands_string(participants)
+      participants.map { |participant | hand_string(participant) }.join("\n\n")
     end
 
     def hand_string(participant)
@@ -175,7 +175,7 @@ module TwentyOne
     end
 
     def hand(participant)
-      if participant == dealer && !finished
+      if participant.kind_of?(Dealer) && !finished
         participant.hand.partially_hidden
       else
         participant.hand
@@ -183,7 +183,7 @@ module TwentyOne
     end
 
     def hand_value_to_show(participant)
-      if participant == dealer && !finished
+      if participant.kind_of?(Dealer) && !finished
         ["", ""]
       elsif participant.busted?
         ["total:", "#{participant.hand.value} (BUSTED!!)"]
@@ -242,7 +242,7 @@ module TwentyOne
       player_turn
       dealer_turn
       evaluate_hands
-      show_hands
+      show_hands(participants)
       show_winner
     end
 
@@ -259,7 +259,7 @@ module TwentyOne
     end
 
     def player_turn
-      show_hands
+      show_hands(participants)
       return if player.busted?
       answer = request_decision
       return if answer.start_with?('s')
@@ -302,6 +302,10 @@ module TwentyOne
       else
         prompt "It's a tie."
       end
+    end
+
+    def participants
+      [player, dealer]
     end
   end
 
