@@ -164,34 +164,40 @@ module TwentyOne
     end
 
     def hand_string(participant)
-      name_chars = participant.to_s.upcase.split("")
-      hand_lines = hand_lines(participant)
-      value_segments = ["", "", *hand_value_to_show(participant), "", ""]
+      name_arr = participant.to_s.upcase.split("")
+      hand_arr = hand_arr(participant)
 
-      [name_chars, hand_lines, value_segments]
-        .transpose
-        .map { |line| line.join(" " * 5) }
-        .join("\n")
+      hand_value_to_show = hand_value_to_show(participant)
+      total_string = total_string(participant)
+      value_arr = ["", "", total_string, hand_value_to_show, "", ""]
+
+      arrs = [name_arr, hand_arr, value_arr]
+      arrs.transpose.map { |line| line.join(" " * 5) }.join("\n")
     end
 
-    def hand_lines(participant)
-      hand =
-        if participant == dealer && !finished
-          participant.hand.partially_hidden
-        else
-          participant.hand
-        end
-
-      hand.to_s.split("\n")
+    def hand_arr(participant)
+      if participant == dealer && !finished
+        participant.hand.partially_hidden.to_s.split("\n")
+      else
+        participant.hand.to_s.split("\n")
+      end
     end
 
     def hand_value_to_show(participant)
       if participant == dealer && !finished
-        ["", ""]
+        ""
       elsif participant.busted?
-        ["total:", "#{participant.hand.value} (BUSTED!!)"]
+        "#{participant.hand.value} (BUSTED!!)"
       else
-        ["total", participant.hand.value.to_s]
+        participant.hand.value.to_s
+      end
+    end
+
+    def total_string(participant)
+      if participant == dealer && !finished
+        ""
+      else
+        "total:"
       end
     end
   end
@@ -215,15 +221,6 @@ module TwentyOne
       prompt "Press enter to continue."
       print_indent
       gets
-    end
-
-    def request_to_continue_or_exit
-      prompt "Press enter to continue (or (e) to exit)."
-      print_indent
-      decision = gets.chomp.to_s
-      return decision if ['', 'e'].include?(decision)
-      announce_invalid_input
-      request_to_continue_or_exit
     end
   end
 
@@ -328,7 +325,7 @@ module TwentyOne
       keep_score
       present_scores
       return if winner
-      user_decides_to_continue
+      request_to_press_enter
       play
     end
 
@@ -357,11 +354,6 @@ module TwentyOne
     def present_scores
       prompt "#{player} #{scores[player]} : #{scores[dealer]} #{dealer}"
       prompt "#{winner} wins the match!" if winner
-    end
-
-    def user_decides_to_continue
-      decision = request_to_continue_or_exit
-      abort("Sad to see you go!") if decision == 'e'
     end
   end
 
@@ -411,7 +403,7 @@ module TwentyOne
       puts ""
       prompt "Welcome to Twentyone!"
       prompt "It takes #{Match::ROUNDS_TO_WIN} round wins to win the match."
-      request_to_press_enter # no exit point
+      request_to_press_enter
     end
 
     def outro
