@@ -165,24 +165,21 @@ module TwentyOne
 
     def hand_string(participant)
       name_chars = participant.to_s.upcase.split("")
-      hand_lines = hand_lines(participant)
-      value_segments = ["", "", *hand_value_to_show(participant), "", ""]
+      hand_lines = hand(participant).to_s.split("\n")
+      value_lines = ["", "", *hand_value_to_show(participant), "", ""]
 
-      [name_chars, hand_lines, value_segments]
+      [name_chars, hand_lines, value_lines]
         .transpose
         .map { |line| line.join(" " * 5) }
         .join("\n")
     end
 
-    def hand_lines(participant)
-      hand =
-        if participant == dealer && !finished
-          participant.hand.partially_hidden
-        else
-          participant.hand
-        end
-
-      hand.to_s.split("\n")
+    def hand(participant)
+      if participant == dealer && !finished
+        participant.hand.partially_hidden
+      else
+        participant.hand
+      end
     end
 
     def hand_value_to_show(participant)
