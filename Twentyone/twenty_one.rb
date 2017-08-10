@@ -188,7 +188,7 @@ module TwentyOne
       elsif participant.busted?
         ["total:", "#{participant.hand.value} (BUSTED!!)"]
       else
-        ["total", participant.hand.value.to_s]
+        ["total:", participant.hand.value.to_s]
       end
     end
   end
