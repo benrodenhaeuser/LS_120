@@ -1,7 +1,48 @@
 module GameOfLife
   module Dimensions
-    WIDTH = 90
-    HEIGHT = 30
+    WIDTH = 40
+    HEIGHT = 20
+  end
+
+  class Citizen
+    ALIVE = 'O'
+    DEAD = '.'
+
+    ALIVE_DISPLAY = "\u25FD".encode('utf-8')
+    DEAD_DISPLAY = "\u25FE".encode('utf-8')
+
+    attr_accessor :status, :next_status, :location, :neighbors
+
+    def initialize(status)
+      @status = status
+      @next_status = nil # todo: to be computed :-)
+      @location = nil # [x, y]
+      @neighbors = nil
+    end
+
+    def x
+      location.first
+    end
+
+    def y
+      location.last
+    end
+
+    def dead?
+      status == DEAD
+    end
+
+    def alive?
+      status == ALIVE
+    end
+
+    def alive_count
+      neighbors.select(&:alive?).count
+    end
+
+    def to_s
+      (alive? ? ALIVE_DISPLAY : DEAD_DISPLAY) #+ location.inspect
+    end
   end
 
   class Seed
@@ -23,71 +64,30 @@ module GameOfLife
     end
 
     # todo: this is madness
+    # todo: code only works if seed has even width!
     def normalize(body)
-      matrix = body.split("\n").map { |row| row.split("") }
-      matrix_height = matrix.size
-      matrix_width = matrix.first.size
-      number_of_row_wraps = (Dimensions::HEIGHT - matrix_height) / 2
-      dead_row = (Citizen::DEAD * matrix_width).split("")
+      lines = body.split("\n")
+      width = lines.first.length
+      number_of_syms_to_wrap = (Dimensions::WIDTH - width) / 2
+      syms_string = Citizen::DEAD * number_of_syms_to_wrap
+      horiz_wrapped = lines.map { |line| syms_string + line + syms_string }
+
+      matrix = horiz_wrapped.map { |row| row.split("") }
+      height = matrix.size
+
+      number_of_row_wraps = (Dimensions::HEIGHT - height) / 2
+      dead_row = (Citizen::DEAD * Dimensions::WIDTH).split("")
       number_of_row_wraps.times do
         matrix = [dead_row] + matrix + [dead_row]
       end
       matrix.map(&:join).join("\n")
-
-      # at this point, the matrix has the correct height, but not width.
-      # what's the best strategy for resizing a matrix?
-      # 1) append and prepend
-      # 2) create an empty matrix of appropriate dimensions
-      #    and carry over the values
-      # => it looks like (2) might be better.
-      # number_of_col_wraps = (WIDTH - matrix_width) / 2
-      # # now we need to shift and push, which is sort of more tedious
     end
 
     def to_grid
-      body.split("\n")
-          .map { |line| line.split("") }
-          .map { |row| row.map { |char| Citizen.new(char) } }
-    end
-  end
-
-  class Citizen
-    ALIVE = 'O'
-    DEAD = '.'
-
-    ALIVE_DISPLAY = "\u25FD".encode('utf-8')
-    DEAD_DISPLAY = "\u25FE".encode('utf-8')
-
-    attr_accessor :status, :location, :neighbors
-
-    def initialize(status)
-      @status = status
-      @location = nil
-      @neighbors = nil
-    end
-
-    def x
-      location.first
-    end
-
-    def y
-      location.last
-    end
-
-    def dead?
-      status == DEAD
-    end
-
-    def alive?
-      status == ALIVE
-    end
-
-    def alive_count
-      neighbors.select { |neighbor| neighbor.alive? }.count
-    end
-
-    def to_s
-      (alive? ? ALIVE_DISPLAY : DEAD_DISPLAY) #+ location.inspect
+      normalize(body)
+        .split("\n")
+        .map { |line| line.split("") }
+        .map { |row| row.map { |char| Citizen.new(char) } }
     end
   end
 
@@ -119,14 +119,17 @@ module GameOfLife
       end
     end
 
-    # todo: simplify
+    # todo: complicated
     def cache_citizen_neighbors
       citizens.each do |citizen|
-        x = citizen.x
-        y = citizen.y
+        x = citizen.x # col idx of citizen
+        y = citizen.y # row idx of citizen
 
-        xplus1 = (x + 1) % grid.first.size
-        yplus1 = (y + 1) % grid.size
+        num_of_cols = grid.first.size
+        num_of_rows = grid.size
+
+        xplus1 = (x + 1) % num_of_cols
+        yplus1 = (y + 1) % num_of_rows
 
         citizen.neighbors =
           [
@@ -138,21 +141,33 @@ module GameOfLife
     end
 
     def change
+      cache_next_status
+      update_current_status
+    end
+
+    def cache_next_status
       citizens.each do |citizen|
-        if citizen.alive_count == 2
-          true
-        elsif citizen.alive_count == 3
-          citizen.status = Citizen::ALIVE
-        else
-          citizen.status = Citizen::DEAD
-        end
+        citizen.next_status =
+          if citizen.alive_count == 2
+            citizen.status
+          elsif citizen.alive_count == 3
+            Citizen::ALIVE
+          else
+            Citizen::DEAD
+          end
+      end
+    end
+
+    def update_current_status
+      citizens.each do |citizen|
+        citizen.status = citizen.next_status
+        citizen.next_status = nil
       end
     end
 
     def to_s
       grid.map(&:join).join("\n")
     end
-
   end
 
   class Game
@@ -164,7 +179,7 @@ module GameOfLife
     end
 
     def play
-      100.times do
+      100.times do # todo: make this configurable (or stoppable)
         display
         change
       end
@@ -177,6 +192,7 @@ module GameOfLife
 
     def change
       population.change
+      sleep 0.1
     end
   end
 end
@@ -186,6 +202,8 @@ end
 # Testing Setup
 # source for seed string:
 # https://github.com/durden/pylife/blob/master/seed_files/A_for_all.cells
+#
+# many seed files: https://github.com/durden/pylife/tree/master/seed_files
 
 seed_string = <<END_HEREDOC
 !Name: A_for_all
@@ -202,13 +220,19 @@ O........O
 ....OO....
 END_HEREDOC
 
-game = GameOfLife::Game.new(seed_string)
-# game.play
-puts game.population
-game.population.change
-puts ""
-puts game.population
-# game.population.change
-# puts ""
-# puts game.population
-# puts game.population.neighbors(game.population.grid[3][3])
+# seed_string = <<END_HEREDOC
+# !Name: Glider
+# !
+# .O..
+# ..O.
+# OOO.
+# END_HEREDOC
+
+GameOfLife::Game.new(seed_string).play
+
+# todo:
+# we are essentially using two representations:
+# - the grid representation
+# - the citizen list representation
+# is that wise?
+# we could cache data in individual citizens even if we had no citizens list.
