@@ -15,8 +15,8 @@ module GameOfLife
 
     def initialize(status)
       @status = status
-      @next_status = nil # todo: to be computed :-)
-      @location = nil # [x, y]
+      @next_status = nil
+      @location = nil
       @neighbors = nil
     end
 
@@ -36,12 +36,12 @@ module GameOfLife
       status == ALIVE
     end
 
-    def alive_count
+    def live_neighbors_count
       neighbors.select(&:alive?).count
     end
 
     def to_s
-      (alive? ? ALIVE_DISPLAY : DEAD_DISPLAY) #+ location.inspect
+      (alive? ? ALIVE_DISPLAY : DEAD_DISPLAY)
     end
   end
 
@@ -50,16 +50,23 @@ module GameOfLife
 
     def initialize(seed_string)
       @string = seed_string
-      @header, @body = extract_body_and_header
+      @header, @body = header_and_body
     end
 
-    def extract_body_and_header
+    def header_and_body
       lines = string.split("\n")
+
       header = ""
       body = ""
+
       lines.each do |line|
-        line[0] == "!" ? header << (line + "\n") : body << (line + "\n")
+        if line[0] == "!"
+          header << (line + "\n")
+        else
+          body << (line + "\n")
+        end
       end
+
       [header, body]
     end
 
@@ -96,22 +103,18 @@ module GameOfLife
 
     def initialize(grid)
       @grid = grid
+      @citizens = grid.flatten
 
-      populate_citizens_list
-      cache_citizen_locations
-      cache_citizen_neighbors
+      prepare_citizens
     end
 
-    def populate_citizens_list
-      @citizens = []
-      grid.each do |row|
-        row.each do |citizen|
-          citizens << citizen
-        end
-      end
+    def prepare_citizens
+      cache_locations
+      cache_neighbors
     end
 
-    def cache_citizen_locations
+    # todo: do we really want to do this? how would we cache the neighbors without it?
+    def cache_locations
       grid.each_with_index do |row, row_idx|
         row.each_with_index do |citizen, col_idx|
           citizen.location = [col_idx, row_idx]
@@ -119,8 +122,7 @@ module GameOfLife
       end
     end
 
-    # todo: complicated
-    def cache_citizen_neighbors
+    def cache_neighbors
       citizens.each do |citizen|
         x = citizen.x # col idx of citizen
         y = citizen.y # row idx of citizen
@@ -141,16 +143,16 @@ module GameOfLife
     end
 
     def change
-      cache_next_status
-      update_current_status
+      calculate_next_status
+      update_status
     end
 
-    def cache_next_status
+    def calculate_next_status
       citizens.each do |citizen|
         citizen.next_status =
-          if citizen.alive_count == 2
+          if citizen.live_neighbors_count == 2
             citizen.status
-          elsif citizen.alive_count == 3
+          elsif citizen.live_neighbors_count == 3
             Citizen::ALIVE
           else
             Citizen::DEAD
@@ -158,7 +160,7 @@ module GameOfLife
       end
     end
 
-    def update_current_status
+    def update_status
       citizens.each do |citizen|
         citizen.status = citizen.next_status
         citizen.next_status = nil
@@ -179,7 +181,7 @@ module GameOfLife
     end
 
     def play
-      100.times do # todo: make this configurable (or stoppable)
+      100.times do
         display
         change
       end
@@ -236,3 +238,7 @@ GameOfLife::Game.new(seed_string).play
 # - the citizen list representation
 # is that wise?
 # we could cache data in individual citizens even if we had no citizens list.
+
+# hook up seed files
+# interface for choosing seed files?
+# how to start/stop during play. the display method could contain a prompt, perhaps?
