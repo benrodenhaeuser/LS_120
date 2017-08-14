@@ -12,16 +12,12 @@ end
 class Index
   attr_reader :value
 
-  def initialize(inner_value)
-    @inner_value = inner_value
-  end
-
-  def value
-    @inner_value
+  def initialize(value)
+    @value = value
   end
 
   def ==(other)
-    @inner_value == other.value
+    value == other.value
   end
 
   def eql?(other)
