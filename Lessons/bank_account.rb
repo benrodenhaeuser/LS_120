@@ -10,4 +10,5 @@ class BankAccount
   end
 end
 
-p BankAccount.new(100).positive_balance?
+account = BankAccount.new(50)
+p account.positive_balance? # true

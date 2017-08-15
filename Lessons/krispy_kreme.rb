@@ -3,6 +3,13 @@ class KrispyKreme
     @filling_type = filling_type
     @glazing = glazing
   end
+
+  def to_s
+    string = ""
+    @filling_type ? string << @filling_type : string << "Plain"
+    string << " with #{@glazing}" if @glazing
+    string
+  end
 end
 
 donut1 = KrispyKreme.new(nil, nil)
@@ -11,12 +18,17 @@ donut3 = KrispyKreme.new(nil, "sugar")
 donut4 = KrispyKreme.new(nil, "chocolate sprinkles")
 donut5 = KrispyKreme.new("Custard", "icing")
 
-puts donut1 # => "Plain"
+puts donut1
+  # => "Plain"
 
-puts donut2 # => "Vanilla"
+puts donut2
+  # => "Vanilla"
 
-puts donut3 # => "Plain with sugar"
+puts donut3
+  # => "Plain with sugar"
 
-puts donut4 # => "Plain with chocolate sprinkles"
+puts donut4
+  # => "Plain with chocolate sprinkles"
 
-puts donut5 # => "Custard with icing"
+puts donut5
+  # => "Custard with icing"
