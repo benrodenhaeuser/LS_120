@@ -6,7 +6,7 @@ class Light
     @color = color
   end
 
-  def self.information
+  def self.light_information
     return "I want to turn on the light with a brightness level of super high and a color of green"
   end
 

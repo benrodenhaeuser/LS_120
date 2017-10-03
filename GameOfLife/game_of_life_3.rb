@@ -68,20 +68,14 @@ module GameOfLife
     end
 
     def to_s
-      (alive? ? Status::ALIVE : Status::DEAD)
+      (alive? ? Status::ALIVE : Status::DEAD) # not used right now.
     end
   end
 
   class Population
-    # todo: my feeling is that it would be easier to understand this if we did
-    # everything just with a "normal" grid representation. We can always derive a citizens list by flattening the grid.
-    # what's not possible then is to have Index objects like we did above.
-    # what we could still do is cache the neighbors. 
-
     def initialize(seed_grid)
-      @display_grid = seed_grid
       @citizens = {}
-      display_grid.each_with_index do |row, row_index|
+      seed_grid.each_with_index do |row, row_index|
         row.each_with_index do |status, col_index|
           citizens[[ColIndex.new(col_index), RowIndex.new(row_index)]] =
             Citizen.new(status)
@@ -94,14 +88,23 @@ module GameOfLife
       update_current_status
     end
 
+    # this builds a grid, whereas if we just use the seed grid, we can take it for granted.
     def to_s
-      update_display_grid
-      display_string
+      grid = []
+      (0...Size::HEIGHT).each do |row_idx|
+        row = []
+        (0...Size::WIDTH).each do |col_idx|
+          row << self[col_idx, row_idx].status
+        end
+        grid << row
+      end
+
+      grid.map(&:join).join("\n")
     end
 
     private
 
-    attr_accessor :citizens, :display_grid
+    attr_accessor :citizens, :grid
 
     def calculate_next_status
       citizens.each_value do |citizen|
@@ -134,6 +137,8 @@ module GameOfLife
       one = Index.new(1)
 
       # todo: this is the only place where we need the Index class.
+      # is this really a reasonable design then?
+
       [
         self[x - one, y - one], self[x - one, y], self[x - one, y + one],
         self[x, y - one], self[x, y + one],
@@ -141,18 +146,26 @@ module GameOfLife
       ]
     end
 
-    def [](col_obj, row_obj)
-      citizens[[col_obj, row_obj]]
+    def [](col_idx, row_idx)
+      # todo: this allows to index into the hash with both ints and Index objs.
+      # which is nice ... but but I am not sure if this is a good idea?
+      # it's yet more complexity that ultimately comes from the neighbors method
+      # would it be possible to do this without a type check?
+      if col_idx.is_a?(Integer)
+        citizens[[ColIndex.new(col_idx), RowIndex.new(row_idx)]]
+      else
+        citizens[[col_idx, row_idx]]
+      end
     end
 
-    def update_display_grid
+    def update_grid
       citizens.each do |location, citizen|
-        display_grid[location.last.value][location.first.value] = citizen.to_s
+        grid[location.last.value][location.first.value] = citizen.status
       end
     end
 
     def display_string
-      display_grid.map(&:join).join("\n")
+      grid.map(&:join).join("\n")
     end
 
   end
@@ -187,6 +200,11 @@ module GameOfLife
 
       [header, body]
     end
+
+    def expand
+      # todo
+    end
+
   end
 
   class Game
